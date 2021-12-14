@@ -14,16 +14,148 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
 
     address public immutable override factory;
     address public immutable override WETH;
+    address public adminAddress;
+    address public feeAddress;
+    uint    public swapFee;
+    uint    public addLiquidityFee;
+    uint    public removeLiquidityFee;
+
 
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
         _;
     }
 
-    constructor(address _factory, address _WETH) public {
+    constructor(
+        address _factory,
+        address _WETH,
+        address _adminAddress,
+        address _feeAddress,
+        uint _swapFee,
+        uint _addLiquidityFee,
+        uint _removeLiquidityFee
+    ) public {
         factory = _factory;
         WETH = _WETH;
+        adminAddress = _adminAddress;
+        feeAddress = _feeAddress;
+        swapFee = _swapFee;
+        addLiquidityFee = _addLiquidityFee;
+        removeLiquidityFee = _removeLiquidityFee;
     }
+
+
+    function setAdminAddress(address _adminAddress) external {
+        require(msg.sender == adminAddress, 'UniswapV2: FORBIDDEN');
+        adminAddress = _adminAddress;
+    }
+
+    function setFeeAddress(address _feeAddress) external {
+        require(msg.sender == adminAddress, 'UniswapV2: FORBIDDEN');
+        feeAddress = _feeAddress;
+    }
+
+    function setSwapFee(uint _swapFee) external {
+        require(msg.sender == adminAddress, 'UniswapV2: FORBIDDEN');
+        swapFee = _swapFee;
+    }
+
+    function setAddLiquidityFee(uint _addLiquidityFee) external {
+        require(msg.sender == adminAddress, 'UniswapV2: FORBIDDEN');
+        addLiquidityFee = _addLiquidityFee;
+    }
+
+    function setRemoveLiquidityFee(uint _removeLiquidityFee) external {
+        require(msg.sender == adminAddress, 'UniswapV2: FORBIDDEN');
+        removeLiquidityFee = _removeLiquidityFee;
+    }
+
+    function _swapFeeWork(uint[] memory amounts, address token) internal virtual returns (uint[] memory amountberk) {
+       uint[] memory amountberk= amounts;
+       if(swapFee > 0 && address(feeAddress) != address(0)){
+            uint feeAmountTarget = amounts[0];
+            feeAmountTarget = feeAmountTarget.mul(swapFee).div(10000).add(1);
+            TransferHelper.safeTransferFrom(
+                   token, msg.sender,feeAddress ,feeAmountTarget
+            );
+            amountberk[0] = amounts[0].sub(feeAmountTarget);
+       }
+    }
+
+    function _swapEthFeeWork(uint[] memory amounts) internal virtual returns (uint[] memory amountberk) {
+       uint[] memory amountberk= amounts;
+       if(swapFee > 0 && address(feeAddress) != address(0)){
+            uint feeAmountTarget = amounts[0];
+            feeAmountTarget = feeAmountTarget.mul(swapFee).div(10000).add(1);
+            IWETH(WETH).transfer(feeAddress,feeAmountTarget);
+            amountberk[0] = amounts[0].sub(feeAmountTarget);
+       }
+    }
+
+    function _swapAddLiquidityFee(address tokenA,uint amountA,address tokenB,uint amountB) internal virtual returns (uint _amountA,uint _amountB) {
+       uint _amountA = amountA;
+       uint _amountB = amountB;
+       if(addLiquidityFee > 0 && address(feeAddress) != address(0)){
+            uint  feeAmountTargetA = amountA.mul(addLiquidityFee).div(10000).add(1);
+            uint  feeAmountTargetB = amountB.mul(addLiquidityFee).div(10000).add(1);
+            TransferHelper.safeTransferFrom(
+                   tokenA, msg.sender,feeAddress ,feeAmountTargetA
+            );
+            TransferHelper.safeTransferFrom(
+                   tokenB, msg.sender,feeAddress ,feeAmountTargetB
+            );
+            _amountA = amountA.sub(feeAmountTargetA);
+            _amountB = amountB.sub(feeAmountTargetB);
+       }
+    }
+
+    function _swapAddEthLiquidityFee(address tokenA,uint amountA,uint amountETH) internal virtual returns (uint _amountA,uint _amountETH) {
+       uint _amountA = amountA;
+       uint _amountETH = amountETH;
+       if(addLiquidityFee > 0 && address(feeAddress) != address(0)){
+            uint  feeAmountTargetA = amountA.mul(addLiquidityFee).div(10000).add(1);
+            uint  feeAmountTargetEth = amountETH.mul(addLiquidityFee).div(10000).add(1);
+            TransferHelper.safeTransferFrom(
+                   tokenA, msg.sender,feeAddress ,feeAmountTargetA
+            );
+             IWETH(WETH).transfer(feeAddress, amountETH);
+            _amountA = amountA.sub(feeAmountTargetA);
+            _amountETH = amountETH.sub(feeAmountTargetEth);
+       }
+    }
+
+     function _swapRemoveLiquidityFee(address tokenA,uint amountA,address tokenB,uint amountB) internal virtual returns (uint _amountA,uint _amountB) {
+       uint _amountA = amountA;
+       uint _amountB = amountB;
+       if(removeLiquidityFee > 0 && address(feeAddress) != address(0)){
+            uint  feeAmountTargetA = amountA.mul(removeLiquidityFee).div(10000).add(1);
+            uint  feeAmountTargetB = amountB.mul(removeLiquidityFee).div(10000).add(1);
+            TransferHelper.safeTransferFrom(
+                   tokenA, msg.sender,feeAddress ,feeAmountTargetA
+            );
+            TransferHelper.safeTransferFrom(
+                   tokenB, msg.sender,feeAddress ,feeAmountTargetB
+            );
+            _amountA = amountA.sub(feeAmountTargetA);
+            _amountB = amountB.sub(feeAmountTargetB);
+       }
+    }
+
+    function _swapRemoveEthLiquidityFee(address tokenA,uint amountA,uint amountETH) internal virtual returns (uint _amountA,uint _amountETH) {
+       uint _amountA = amountA;
+       uint _amountETH = amountETH;
+       if(removeLiquidityFee > 0 && address(feeAddress) != address(0)){
+            uint  feeAmountTargetA = amountA.mul(removeLiquidityFee).div(10000).add(1);
+            uint  feeAmountTargetEth = amountETH.mul(removeLiquidityFee).div(10000).add(1);
+            TransferHelper.safeTransferFrom(
+                   tokenA, msg.sender,feeAddress ,feeAmountTargetA
+            );
+             IWETH(WETH).transfer(feeAddress, amountETH);
+            _amountA = amountA.sub(feeAmountTargetA);
+            _amountETH = amountETH.sub(feeAmountTargetEth);
+       }
+    }
+
 
     receive() external payable {
         assert(msg.sender == WETH); // only accept ETH via fallback from the WETH contract
@@ -70,6 +202,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
     ) external virtual override ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
         (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
+        (amountA, amountB) = _swapAddLiquidityFee(tokenA,amountA,tokenB,amountB);
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
         liquidity = IUniswapV2Pair(pair).mint(to);
@@ -91,6 +224,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
             amountETHMin
         );
         address pair = UniswapV2Library.pairFor(factory, token, WETH);
+        (amountToken, amountETH) = _swapAddEthLiquidityFee(token,amountToken,amountETH);
         TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
         IWETH(WETH).deposit{value: amountETH}();
         assert(IWETH(WETH).transfer(pair, amountETH));
@@ -116,6 +250,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
         require(amountA >= amountAMin, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');
         require(amountB >= amountBMin, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
+        _swapRemoveLiquidityFee(tokenA,amount0,tokenB,amount1);
     }
     function removeLiquidityETH(
         address token,
@@ -134,6 +269,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
             address(this),
             deadline
         );
+        (amountToken,amountETH) = _swapRemoveEthLiquidityFee(token,amountToken,amountETH);
         TransferHelper.safeTransfer(token, to, amountToken);
         IWETH(WETH).withdraw(amountETH);
         TransferHelper.safeTransferETH(to, amountETH);
@@ -230,6 +366,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
     ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
         amounts = UniswapV2Library.getAmountsOut(factory, amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
+        amounts = _swapFeeWork(amounts,path[0]);
         TransferHelper.safeTransferFrom(
             path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]
         );
@@ -244,6 +381,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
     ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
         amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
         require(amounts[0] <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
+        amounts = _swapFeeWork(amounts,path[0]);
         TransferHelper.safeTransferFrom(
             path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]
         );
@@ -261,6 +399,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         amounts = UniswapV2Library.getAmountsOut(factory, msg.value, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
         IWETH(WETH).deposit{value: amounts[0]}();
+        amounts = _swapEthFeeWork(amounts);
         assert(IWETH(WETH).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
     }
