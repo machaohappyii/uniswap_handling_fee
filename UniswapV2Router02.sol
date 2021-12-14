@@ -8,17 +8,14 @@ import './libraries/UniswapV2Library.sol';
 import './libraries/SafeMath.sol';
 import './interfaces/IERC20.sol';
 import './interfaces/IWETH.sol';
+import './UniswapV2AdminFee.sol';
 
-contract UniswapV2Router02 is IUniswapV2Router02 {
+contract UniswapV2Router02 is IUniswapV2Router02, UniswapV2AdminFee{
     using SafeMath for uint;
 
     address public immutable override factory;
     address public immutable override WETH;
-    address public adminAddress;
-    address public feeAddress;
-    uint    public swapFee;
-    uint    public addLiquidityFee;
-    uint    public removeLiquidityFee;
+
 
 
     modifier ensure(uint deadline) {
@@ -37,125 +34,13 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
     ) public {
         factory = _factory;
         WETH = _WETH;
+        WETHs = _WETH;
         adminAddress = _adminAddress;
         feeAddress = _feeAddress;
         swapFee = _swapFee;
         addLiquidityFee = _addLiquidityFee;
         removeLiquidityFee = _removeLiquidityFee;
     }
-
-
-    function setAdminAddress(address _adminAddress) external {
-        require(msg.sender == adminAddress, 'UniswapV2: FORBIDDEN');
-        adminAddress = _adminAddress;
-    }
-
-    function setFeeAddress(address _feeAddress) external {
-        require(msg.sender == adminAddress, 'UniswapV2: FORBIDDEN');
-        feeAddress = _feeAddress;
-    }
-
-    function setSwapFee(uint _swapFee) external {
-        require(msg.sender == adminAddress, 'UniswapV2: FORBIDDEN');
-        swapFee = _swapFee;
-    }
-
-    function setAddLiquidityFee(uint _addLiquidityFee) external {
-        require(msg.sender == adminAddress, 'UniswapV2: FORBIDDEN');
-        addLiquidityFee = _addLiquidityFee;
-    }
-
-    function setRemoveLiquidityFee(uint _removeLiquidityFee) external {
-        require(msg.sender == adminAddress, 'UniswapV2: FORBIDDEN');
-        removeLiquidityFee = _removeLiquidityFee;
-    }
-
-    function _swapFeeWork(uint[] memory amounts, address token) internal virtual returns (uint[] memory amountberk) {
-       uint[] memory amountberk= amounts;
-       if(swapFee > 0 && address(feeAddress) != address(0)){
-            uint feeAmountTarget = amounts[0];
-            feeAmountTarget = feeAmountTarget.mul(swapFee).div(10000).add(1);
-            TransferHelper.safeTransferFrom(
-                   token, msg.sender,feeAddress ,feeAmountTarget
-            );
-            amountberk[0] = amounts[0].sub(feeAmountTarget);
-       }
-    }
-
-    function _swapEthFeeWork(uint[] memory amounts) internal virtual returns (uint[] memory amountberk) {
-       uint[] memory amountberk= amounts;
-       if(swapFee > 0 && address(feeAddress) != address(0)){
-            uint feeAmountTarget = amounts[0];
-            feeAmountTarget = feeAmountTarget.mul(swapFee).div(10000).add(1);
-            IWETH(WETH).transfer(feeAddress,feeAmountTarget);
-            amountberk[0] = amounts[0].sub(feeAmountTarget);
-       }
-    }
-
-    function _swapAddLiquidityFee(address tokenA,uint amountA,address tokenB,uint amountB) internal virtual returns (uint _amountA,uint _amountB) {
-       uint _amountA = amountA;
-       uint _amountB = amountB;
-       if(addLiquidityFee > 0 && address(feeAddress) != address(0)){
-            uint  feeAmountTargetA = amountA.mul(addLiquidityFee).div(10000).add(1);
-            uint  feeAmountTargetB = amountB.mul(addLiquidityFee).div(10000).add(1);
-            TransferHelper.safeTransferFrom(
-                   tokenA, msg.sender,feeAddress ,feeAmountTargetA
-            );
-            TransferHelper.safeTransferFrom(
-                   tokenB, msg.sender,feeAddress ,feeAmountTargetB
-            );
-            _amountA = amountA.sub(feeAmountTargetA);
-            _amountB = amountB.sub(feeAmountTargetB);
-       }
-    }
-
-    function _swapAddEthLiquidityFee(address tokenA,uint amountA,uint amountETH) internal virtual returns (uint _amountA,uint _amountETH) {
-       uint _amountA = amountA;
-       uint _amountETH = amountETH;
-       if(addLiquidityFee > 0 && address(feeAddress) != address(0)){
-            uint  feeAmountTargetA = amountA.mul(addLiquidityFee).div(10000).add(1);
-            uint  feeAmountTargetEth = amountETH.mul(addLiquidityFee).div(10000).add(1);
-            TransferHelper.safeTransferFrom(
-                   tokenA, msg.sender,feeAddress ,feeAmountTargetA
-            );
-             IWETH(WETH).transfer(feeAddress, amountETH);
-            _amountA = amountA.sub(feeAmountTargetA);
-            _amountETH = amountETH.sub(feeAmountTargetEth);
-       }
-    }
-
-     function _swapRemoveLiquidityFee(address tokenA,uint amountA,address tokenB,uint amountB) internal virtual returns (uint _amountA,uint _amountB) {
-       uint _amountA = amountA;
-       uint _amountB = amountB;
-       if(removeLiquidityFee > 0 && address(feeAddress) != address(0)){
-            uint  feeAmountTargetA = amountA.mul(removeLiquidityFee).div(10000).add(1);
-            uint  feeAmountTargetB = amountB.mul(removeLiquidityFee).div(10000).add(1);
-            TransferHelper.safeTransferFrom(
-                   tokenA, msg.sender,feeAddress ,feeAmountTargetA
-            );
-            TransferHelper.safeTransferFrom(
-                   tokenB, msg.sender,feeAddress ,feeAmountTargetB
-            );
-            _amountA = amountA.sub(feeAmountTargetA);
-            _amountB = amountB.sub(feeAmountTargetB);
-       }
-    }
-
-    function _swapRemoveEthLiquidityFee(address tokenA,uint amountA,uint amountETH) internal virtual returns (uint _amountA,uint _amountETH) {
-       uint _amountA = amountA;
-       uint _amountETH = amountETH;
-       if(removeLiquidityFee > 0 && address(feeAddress) != address(0)){
-            uint  feeAmountTargetA = amountA.mul(removeLiquidityFee).div(10000).add(1);
-            uint  feeAmountTargetEth = amountETH.mul(removeLiquidityFee).div(10000).add(1);
-            TransferHelper.safeTransferFrom(
-                   tokenA, msg.sender,feeAddress ,feeAmountTargetA
-            );
-             IWETH(WETH).transfer(feeAddress, amountETH);
-            _amountA = amountA.sub(feeAmountTargetA);
-            _amountETH = amountETH.sub(feeAmountTargetEth);
-       }
-    }
-
 
     receive() external payable {
         assert(msg.sender == WETH); // only accept ETH via fallback from the WETH contract
